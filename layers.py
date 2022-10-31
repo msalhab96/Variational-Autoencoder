@@ -1,3 +1,4 @@
+import math
 import torch
 from torch import nn
 from torch import Tensor
@@ -53,6 +54,29 @@ class TransConvBlock(ConvBlock):
         return super().forward(x)
 
 
+class FCBlock(nn.Module):
+    def __init__(
+            self,
+            in_size: int,
+            out_size: int,
+            p_dropout: float
+            ) -> None:
+        super().__init__()
+        self.fc = nn.Linear(
+            in_features=in_size, out_features=out_size
+            )
+        self.b_norm = nn.BatchNorm1d(out_size)
+        self.relu = nn.ReLU()
+        self.dropout = nn.Dropout(p_dropout)
+
+    def forward(self, x: Tensor) -> Tensor:
+        out = self.fc(x)
+        out = self.b_norm(out)
+        out = self.relu(out)
+        out = self.dropout(out)
+        return out
+
+
 class ConvEncoder(nn.Module):
     def __init__(
             self,
@@ -69,13 +93,13 @@ class ConvEncoder(nn.Module):
         self.layers = nn.ModuleList([
             ConvBlock(
                 in_channels=in_channels if i == 1 else (i - 1) * out_channels,
-                out_channels=i * out_channels if i != latent_size else 1,
+                out_channels=i * out_channels if i != n_layers else 1,
                 kernel_size=kernel_size,
                 p_dropout=p_dropout
             )
             for i in range(1, 1 + n_layers)
         ])
-        size = img_size - n_layers * (kernel_size + 1)
+        size = img_size - n_layers * (kernel_size - 1)
         self.fc1 = nn.Linear(
             in_features=size ** 2, out_features=h_size
             )
@@ -142,18 +166,16 @@ class ConvDecoder(nn.Module):
             self,
             n_layers: int,
             kernel_size: int,
-            in_channels: int,
             out_channels: int,
-            img_size: int,
             latent_size: int,
             h_size: int,
             p_dropout: float
             ) -> None:
         super().__init__()
         self.layers = nn.ModuleList([
-            ConvBlock(
+            TransConvBlock(
                 in_channels=1 if i == 1 else (i - 1) * out_channels,
-                out_channels=i * out_channels if i != latent_size else 1,
+                out_channels=i * out_channels if i != n_layers else 1,
                 kernel_size=kernel_size,
                 p_dropout=p_dropout
             )
@@ -171,9 +193,59 @@ class ConvDecoder(nn.Module):
         # z is the parmterized tensor of shape [B, l]
         z = self.fc1(z)
         z = self.fc2(z)
-        size = self.latent_size // 2
+        size = int(math.sqrt(self.latent_size))
         z = z.view(z.shape[0], 1, size, size)
         out = z
         for layer in self.layers:
             out = layer(out)
         return out
+
+
+class FCEncoder(nn.Module):
+    def __init__(
+            self,
+            in_size: int,
+            hidden_size: int,
+            latent_size: int,
+            n_layers: int,
+            p_dropout: float
+            ) -> None:
+        super().__init__()
+        self.layers = nn.ModuleList(
+            FCBlock(
+                in_size=in_size if i == 1 else hidden_size // (i - 1),
+                out_size=latent_size if i == n_layers else hidden_size // i,
+                p_dropout=p_dropout
+            )
+            for i in range(1, 1 + n_layers)
+        )
+
+    def forward(self, x: Tensor) -> Tensor:
+        for layer in self.layers:
+            x = layer(x)
+        return x
+
+
+class FCDecoder(nn.Module):
+    def __init__(
+            self,
+            out_size: int,
+            latent_size: int,
+            hidden_size: int,
+            n_layers: int,
+            p_dropout: float
+            ) -> None:
+        super().__init__()
+        self.layers = nn.ModuleList(
+            FCBlock(
+                in_size=latent_size if i == 1 else hidden_size * (i - 1),
+                out_size=out_size if i == n_layers else hidden_size * i,
+                p_dropout=p_dropout
+            )
+            for i in range(1, 1 + n_layers)
+        )
+
+    def forward(self, x: Tensor) -> Tensor:
+        for layer in self.layers:
+            x = layer(x)
+        return x
