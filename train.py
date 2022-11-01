@@ -94,7 +94,7 @@ def get_trainer(cfg):
         cfg.data_path, cfg.batch_size
         )
     optim = get_optim(model)
-    criterion = VAELoss().to(cfg.device)
+    criterion = VAELoss(beta=cfg.beta).to(cfg.device)
     logger = TBLogger(cfg.logdir)
     return Trainer(
         train_loader=train_loader,
