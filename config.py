@@ -52,6 +52,9 @@ def add_train_args(parser):
     group.add_argument(
         '--device', type=str, default='cuda:1'
         )
+    group.add_argument(
+        '--beta', type=float, default=1.0
+        )
 
 
 def get_cfg():
