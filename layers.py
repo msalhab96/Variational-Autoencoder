@@ -19,13 +19,11 @@ class ConvBlock(nn.Module):
             kernel_size=kernel_size
             )
         self.b_norm = nn.BatchNorm2d(out_channels)
-        self.relu = nn.ReLU()
         self.dropout = nn.Dropout(p_dropout)
 
     def forward(self, x: Tensor) -> Tensor:
         out = self.conv(x)
         out = self.b_norm(out)
-        out = self.relu(out)
         out = self.dropout(out)
         return out
 
@@ -66,13 +64,11 @@ class FCBlock(nn.Module):
             in_features=in_size, out_features=out_size
             )
         self.b_norm = nn.BatchNorm1d(out_size)
-        self.relu = nn.ReLU()
         self.dropout = nn.Dropout(p_dropout)
 
     def forward(self, x: Tensor) -> Tensor:
         out = self.fc(x)
         out = self.b_norm(out)
-        out = self.relu(out)
         out = self.dropout(out)
         return out
 
