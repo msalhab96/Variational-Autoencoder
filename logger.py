@@ -8,8 +8,8 @@ class TBLogger(SummaryWriter):
         super().__init__(log_dir=log_dir, *args, **kwargs)
         self.mean_counter = 0
         self.std_counter = 0
-        self.train_loss_counter = 0
-        self.test_loss_counter = 0
+        self.train_counter = 0
+        self.test_counter = 0
 
     def log_mean(self, value):
         self.add_scalar(
