@@ -9,31 +9,30 @@ class KLDiv(nn.Module):
 
     def forward(self, mean: Tensor, std: Tensor):
         mu_squared = mean ** 2
-        std = torch.log(std)
-        std_squred = std ** 2
-        loss = 1 + std - mu_squared - std_squred
-        loss = loss.sum(dim=-1)
-        return -0.5 * loss
+        loss = 1 + std - mu_squared - torch.exp(std)
+        return -0.5 * loss.sum(dim=-1)
 
 
 class MSE(nn.Module):
     def __init__(self) -> None:
         super().__init__()
 
-    def forward(x: Tensor, y: Tensor) -> Tensor:
+    def forward(self, x: Tensor, y: Tensor) -> Tensor:
         loss = (x - y) ** 2
-        loss = loss.sum(dim=-1)
-        return loss
+        return loss.sum(dim=-1)
 
 
 class VAELoss(nn.Module):
-    def __init__(self) -> None:
+    def __init__(self, beta=1.0) -> None:
         super().__init__()
         self.kl = KLDiv()
         self.mse = MSE()
+        self.beta = beta
 
     def forward(
             self, mean: Tensor, std: Tensor, x: Tensor, y: Tensor
             ) -> Tensor:
-        loss = self.kl(mean, std) + self.mse(x, y)
+        mse = self.mse(x, y.view(y.shape[0], -1))
+        kl = self.kl(mean, std)
+        loss = self.beta * kl + mse
         return loss.mean()
