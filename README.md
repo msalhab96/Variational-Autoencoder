@@ -32,4 +32,5 @@ pip install -r requirements.txt
 python train.py --batch_size 128 --conditional --latent_size 2
 ```
 
+You can try it out using the ```infer.ipynb``` notebook
 
